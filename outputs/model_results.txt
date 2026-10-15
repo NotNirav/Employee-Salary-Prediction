@@ -1,0 +1,26 @@
+Employee Salary Prediction -- Model Results
+==================================================
+
+Features: ['Age', 'Years of Experience', 'Gender', 'Education Level']
+Target: Salary
+Training samples: 1424
+Test samples: 356
+
+Evaluation Metrics:
+  MAE: 21,245.8943
+  MSE: 774,391,406.0127
+  RMSE: 27,827.8890
+  R2: 0.7311
+
+Sample Predictions:
+ Actual Salary  Predicted Salary    Error
+       90000.0          89826.71   173.29
+       26000.0          30655.66 -4655.66
+       92438.0          89599.82  2838.18
+      183690.0         188316.26 -4626.26
+      170000.0         164768.57  5231.43
+      200000.0         180710.89 19289.11
+       25000.0          30655.66 -5655.66
+      180000.0         161313.21 18686.79
+      175000.0         156108.94 18891.06
+      104702.0          89764.58 14937.42
