@@ -1,0 +1,15 @@
+EMPLOYEE SALARY PREDICTION - MODEL EVALUATION METRICS
+============================================================
+
+            Model  Train R²  Test R²  MAE ($)          MSE  RMSE ($)
+Linear Regression    0.8121   0.8130 17686.42 538528748.40  23206.22
+    Decision Tree    0.9049   0.8365 14283.97 470841450.25  21698.88
+    Random Forest    0.9715   0.8693 12408.90 376418280.94  19401.50
+
+BENCHMARK AGAINST OLD BASELINE:
+  Metric  Old Baseline (No Job Title)  New Best Model (Random Forest)                       Improvement
+ Test R²                       0.7311                          0.8693                  +0.1382 (+18.9%)
+RMSE ($)                   27828.0000                      19401.5000 -$8426.50 (30.3% error reduction)
+ MAE ($)                   21246.0000                      12408.9000 -$8837.10 (41.6% error reduction)
+
+Best Model: Random Forest (Test R2: 0.8693, RMSE: $19,401.50)

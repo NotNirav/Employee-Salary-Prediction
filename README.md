@@ -1,238 +1,176 @@
 # Employee Salary Prediction
 
-**Data Exploration and Visualization Laboratory (DEVL) Mini-Project**
+**Data Exploration and Visualization Laboratory (DEVL) Mini-Project**  
+*Department of Computer Engineering, Pimpri Chinchwad College of Engineering (PCCOE)*
 
-## 1. Project Overview
+---
 
-This project predicts employee salaries using data exploration, visualization, and
-multiple linear regression. It demonstrates a complete data science workflow from
-raw CSV data to an interactive salary estimator.
+## 1. Project Overview & Problem Statement
 
-## 2. Problem Statement & Objectives
+Annual employee compensation depends on a multifaceted combination of professional qualifications, accumulated tenure, domain specialization, and seniority.
 
-**Problem:** Given employee attributes (age, experience, gender, education level),
-can we build a regression model to estimate salary?
+**Problem:** Can we accurately predict employee salaries from structured demographic and occupational attributes while extracting actionable statistical insights from workforce patterns?
 
-**Objectives:**
-- Inspect and clean a real employee salary dataset.
-- Perform exploratory data analysis with meaningful visualizations.
-- Apply statistical analysis including a hypothesis test.
-- Train and evaluate a Multiple Linear Regression model.
-- Provide an interactive command-line salary prediction tool.
+**Key Innovations & Results:**
+- Standardized and sanitized real-world salary data across 6,704 raw employee records.
+- Solved the **193-title high-cardinality dilemma** by engineering a 9-domain functional role taxonomy and a 5-tier seniority hierarchy.
+- Validated degree wage premiums and categorical salary distributions via **Welch's $t$-test** and **One-Way ANOVA**.
+- Built and benchmarked three regression architectures (Multiple Linear Regression, Decision Tree, Random Forest Regressor).
+- Achieved **$R^2 = 0.8693$** (Random Forest), reducing prediction error by **30.3% RMSE** and **41.6% MAE** over the traditional baseline.
+- Provided a modular CLI to execute any stage individually, the full pipeline, or an interactive terminal predictor.
 
-## 3. Dataset
+---
 
-- **File:** `Salary_Data.csv` (6,704 rows, 6 columns)
-- **Source:** The dataset was found in the project workspace. Original source is
-  unverified (likely a Kaggle salary dataset).
-- **Currency:** Not specified in the dataset. Values appear to be in USD based on
-  the range (350 - 250,000), but this cannot be confirmed.
+## 2. Directory Structure
 
-| Column              | Type    | Description                    |
-|---------------------|---------|--------------------------------|
-| Age                 | float64 | Employee age                   |
-| Gender              | string  | Male, Female, Other            |
-| Education Level     | string  | High School, Bachelor's, Master's, PhD |
-| Job Title           | string  | 193 unique job titles          |
-| Years of Experience | float64 | Total years of work experience |
-| Salary              | float64 | Annual salary (target)         |
-
-## 4. Technologies Used
-
-| Technology    | Purpose                               |
-|---------------|---------------------------------------|
-| Python 3.14   | Programming language                  |
-| Pandas        | Data loading, inspection, cleaning    |
-| NumPy         | Numerical operations                  |
-| Matplotlib    | Data visualization                    |
-| Seaborn       | Statistical visualizations            |
-| Scikit-learn  | Preprocessing, regression, evaluation |
-| SciPy         | Hypothesis testing (t-test)           |
-| Joblib        | Model persistence (save/load)         |
-
-## 5. Project Structure
-
-```
-Miniproject/
-├── Salary_Data.csv              # Original dataset (unchanged)
-├── EmployeeSalaryPrediction.py  # Original exploratory script (preserved)
-├── cleaned_salary_data.csv      # Previously generated file (preserved)
-├── main.py                      # Entry point (run this)
-├── requirements.txt             # Python dependencies
-├── README.md                    # This file
-├── test_smoke.py                # Verification test script
-├── src/
-│   ├── __init__.py
-│   └── salary_prediction.py     # Core module (all functions)
+```text
+Employee-Salary-Prediction/
+├── requirements.txt            # Python dependencies (pandas, scikit-learn, etc.)
+├── README.md                   # Complete project documentation and lab guide
+├── everything.md               # Technical architecture & mathematical compendium
+├── main.py                     # Master CLI orchestrator (train / stage / predict)
+├── test_smoke.py               # Automated 45-point test verification suite
+│
+├── data/
+│   ├── raw/
+│   │   └── Salary_Data.csv     # Raw dataset (6,704 rows x 6 features)
+│   └── processed/
+│       ├── clean_salary_data.csv    # Cleaned human-readable dataset (1,780 rows)
+│       └── encoded_salary_data.csv  # Numeric model-ready dataset with engineered features
+│
+├── stages/
+│   ├── __init__.py             # Package initializer
+│   ├── helpers.py              # Domain keyword categorization and path hierarchy
+│   ├── stage1_load_summary.py  # Stage 1: Dataset ingestion, schema inspection & null audit
+│   ├── stage2_preprocess.py    # Stage 2: Cleaning, feature engineering & one-hot encoding
+│   ├── stage3_eda.py           # Stage 3: Exploratory data analysis & 9 analytical plots
+│   ├── stage4_stats.py         # Stage 4: Statistical inference (t-tests, ANOVA) & RF importance
+│   └── stage5_models.py        # Stage 5: Regressors, evaluation, parity plots & inference engine
+│
 └── outputs/
-    ├── salary_model.joblib      # Saved trained model
-    ├── model_results.txt        # Evaluation metrics
-    └── visualizations/
+    ├── models/
+    │   ├── salary_rf_model.joblib   # Persisted best model bundle (Random Forest)
+    │   └── model_metrics.txt        # Textual ledger of model metrics and baseline comparison
+    └── plots/                       # 13 high-resolution (120 DPI) visualization charts
         ├── 01_salary_distribution.png
-        ├── 02_experience_vs_salary.png
-        ├── 03_salary_by_education.png
-        ├── 04_salary_by_job_title.png
-        ├── 05_salary_boxplot.png
-        ├── 06_correlation_heatmap.png
-        ├── 07_age_distribution.png
-        └── 08_actual_vs_predicted.png
+        ├── 02_salary_boxplot.png
+        ├── 03_age_experience_distribution.png
+        ├── 04_experience_vs_salary.png
+        ├── 05_age_vs_salary.png
+        ├── 06_education_vs_salary.png
+        ├── 07_job_category_vs_salary.png
+        ├── 08_seniority_vs_salary.png
+        ├── 09_gender_vs_salary.png
+        ├── 10_correlation_heatmap.png
+        ├── 11_feature_importance.png
+        ├── 12_actual_vs_predicted.png
+        └── 13_model_r2_comparison.png
 ```
 
-## 6. Data Cleaning & Preprocessing
+---
 
-| Step | Action | Details |
-|------|--------|---------|
-| 1 | Standardize Education | Mapped "Bachelor's Degree" -> "Bachelor's", "Master's Degree" -> "Master's", "phD" -> "PhD" |
-| 2 | Drop missing target | Removed 5 rows with missing Salary |
-| 3 | Remove invalid salary | Removed rows with Salary <= 0 |
-| 4 | Remove duplicates | Dropped 4,912 duplicate rows |
-| 5 | Remove rare gender | Dropped 7 rows with Gender='Other' (too few for analysis) |
-| 6 | Impute missing features | 1 missing Education Level filled with mode |
-| 7 | Outlier investigation | IQR method found 0 outliers after dedup; kept all valid records |
+## 3. Five-Stage Pipeline Breakdown
 
-**Final cleaned dataset:** 1,780 rows, 6 columns, 0 missing values.
+### Stage 1: Data Ingestion & Summary (`stages/stage1_load_summary.py`)
+- Reads raw CSV `Salary_Data.csv` (6,704 rows, 6 features).
+- Audits column types, missing value distributions, and duplicate records (4,912 scrape duplicates identified).
+- Highlights inconsistencies in `Education Level` strings and extreme sparsity across 193 unique `Job Title` entries.
 
-## 7. EDA & Visualizations
+### Stage 2: Data Preprocessing & Feature Engineering (`stages/stage2_preprocess.py`)
+- **Target Sanitization**: Drops 5 rows with missing or non-positive salaries.
+- **String Harmonization**: Unifies `"Bachelor's Degree"` $\to$ `"Bachelor's"`, `"Master's Degree"` $\to$ `"Master's"`, `"phD"` $\to$ `"PhD"`.
+- **Deduplication**: Removes 4,912 duplicate rows.
+- **Subgroup Pruning**: Drops 7 rows where `Gender == 'Other'` due to insufficient sample size for statistical validity.
+- **Missing Value Imputation**: Median for continuous features (`Age`, `Years of Experience`); mode for categoricals.
+- **Domain Feature Engineering**:
+  - `Job Category`: Solves the 193-title sparsity problem by mapping titles into 9 functional categories using keyword matching (`Data/Analytics`, `Engineering/Software`, `HR`, `Marketing`, `Sales`, `Finance/Accounting`, `Design/Creative`, `Operations/Admin`, `Management/Executive`).
+  - `Seniority`: Extracts hierarchical career tier (0=Junior, 1=Mid, 2=Senior, 3=Manager/Lead, 4=Director/VP/Executive).
+  - `Experience_per_Age`: Ratio feature capturing career experience density ($\text{Exp} / \text{Age}$).
+  - `Exp_x_Education`: Multiplicative interaction term modeling differential returns to experience by degree tier.
+- **Encoding**: Ordinal mapping for Education, binary dummy for Gender (`Gender_Male`), and one-hot encoding for `Job Category`.
 
-Eight visualizations are generated in `outputs/visualizations/`:
+### Stage 3: Exploratory Data Analysis & Visualizations (`stages/stage3_eda.py`)
+Generates 9 analytical plots in `outputs/plots/`:
+1. `01_salary_distribution.png`: Target salary histogram with KDE.
+2. `02_salary_boxplot.png`: Univariate salary dispersion and outlier assessment.
+3. `03_age_experience_distribution.png`: Dual histograms for workforce age and career tenure.
+4. `04_experience_vs_salary.png`: Bivariate scatter showing strong linear correlation ($r = +0.82$).
+5. `05_age_vs_salary.png`: Age vs. compensation progression curve.
+6. `06_education_vs_salary.png`: Boxplot showing monotonic salary growth across degree levels.
+7. `07_job_category_vs_salary.png`: Comparative distributions across the 9 functional job categories.
+8. `08_seniority_vs_salary.png`: Boxplot validating salary tiering across seniority levels 0 to 4.
+9. `09_gender_vs_salary.png`: Gender salary distribution comparison.
 
-1. **Salary Distribution** - Histogram with KDE showing right-skewed salary distribution.
-2. **Experience vs Salary** - Scatter plot showing strong positive correlation (+0.82).
-3. **Salary by Education** - Box plot showing salary increases with education level.
-4. **Salary by Top 10 Jobs** - Horizontal box plot of highest-frequency job titles.
-5. **Salary Box Plot** - Overall outlier inspection.
-6. **Correlation Heatmap** - Shows relationships between Age, Experience, and Salary.
-7. **Age Distribution** - Histogram of employee age distribution.
-8. **Actual vs Predicted** - Regression evaluation scatter with reference line.
+### Stage 4: Statistical Inference & Feature Selection (`stages/stage4_stats.py`)
+- **Correlation Heatmap (`10_correlation_heatmap.png`)**: Computes Pearson correlation matrix; analyzes collinearity between Age and Experience ($r \approx 0.98$).
+- **Welch's $t$-test (Education)**: Bachelor's mean (\$91,211, $n=768$) vs. Master's mean (\$127,373, $n=567$) yields $t = -15.56, p < 0.0001 \implies$ statistically significant degree premium.
+- **One-Way ANOVA**:
+  - Across 4 Education levels: $F = 363.42, p < 0.0001$.
+  - Across 9 Job Categories: $F = 18.23, p < 0.0001$.
+- **Welch's $t$-test (Gender)**: Male vs. Female salary difference evaluation ($t = 4.38, p < 0.0001$).
+- **Feature Importance (`11_feature_importance.png`)**: Fits Random Forest to rank predictors; confirms `Years of Experience`, `Age`, and `Seniority` dominate salary variance.
 
-## 8. Statistical Analysis
+### Stage 5: Regressors, Benchmarking & Inference (`stages/stage5_models.py`)
+- Splits data 80/20 train/test (`random_state=42`).
+- Scales numerical features with `StandardScaler` (fitted on training data only to avoid leakage).
+- Trains and evaluates three candidate regressors:
+  1. **Multiple Linear Regression** (OLS)
+  2. **Decision Tree Regressor** (`max_depth=8`)
+  3. **Random Forest Regressor** (`n_estimators=100`)
+- Produces parity plot (`12_actual_vs_predicted.png`) and performance comparison chart (`13_model_r2_comparison.png`).
+- Persists best model to `outputs/models/salary_rf_model.joblib`.
+- Exposes interactive CLI and single prediction API function `predict_salary()`.
 
-**Descriptive Statistics (Salary):**
-- Mean: 113,163 | Median: 110,000 | Std Dev: 51,602
-- Min: 350 | Max: 250,000
+---
 
-**Correlations with Salary:**
-- Years of Experience: +0.82 (strong positive)
-- Age: +0.77 (strong positive)
+## 4. Final Model Comparison & Benchmark
 
-**Hypothesis Test:**
-- **Question:** Is there a significant salary difference between Bachelor's and Master's holders?
-- **Test:** Welch's two-sample t-test (unequal variance)
-- **Result:** p < 0.001 -- REJECT H0. There IS a significant difference.
-- Bachelor's mean: 91,211 (n=768) vs. Master's mean: 127,373 (n=567)
+| Regressor Architecture | Train $R^2$ | Test $R^2$ | MAE ($) | RMSE ($) | Overfitting Gap | Best Model? |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Linear Regression** | 0.8121 | 0.8130 | $17,686.42 | $23,206.22 | ~0.000 | Baseline Linear |
+| **Decision Tree** | 0.9049 | 0.8365 | $14,283.97 | $21,698.88 | 0.0684 | Non-linear Tree |
+| **Random Forest** | **0.9715** | **0.8693** | **$12,408.90** | **$19,401.50** | 0.1022 | **Best Overall** |
 
-## 9. Regression Model
+### Benchmark Against Old Baseline Model
 
-**Algorithm:** Multiple Linear Regression (scikit-learn)
+| Metric | Old Baseline (Dropped Job Titles) | New Best Model (Random Forest + Feature Engineering) | Net Improvement |
+| :--- | :---: | :---: | :---: |
+| **Test $R^2$** | 0.7311 | **0.8693** | **+0.1382 (+18.9%)** |
+| **RMSE ($)** | $27,828.00 | **$19,401.50** | **-$8,426.50 (30.3% error reduction)** |
+| **MAE ($)** | $21,246.00 | **$12,408.90** | **-$8,837.10 (41.6% error reduction)** |
 
-**Features used:** Age, Years of Experience, Gender, Education Level
+---
 
-**Excluded:** Job Title (193 unique values would create excessive sparse features
-and likely overfit a linear model; noted as a limitation).
+## 5. Quickstart & Execution Guide
 
-**Preprocessing pipeline (fitted on training data only):**
-- Numeric features: Median imputation + Standard scaling
-- Categorical features: Mode imputation + One-hot encoding (unknown categories ignored)
-
-**Train/Test split:** 80/20 (random_state=42)
-
-### Evaluation Metrics (Test Set)
-
-| Metric | Value |
-|--------|-------|
-| MAE (Mean Absolute Error) | 21,245.89 |
-| MSE (Mean Squared Error) | 774,391,406.01 |
-| RMSE (Root Mean Squared Error) | 27,827.89 |
-| R² (Coefficient of Determination) | 0.7311 |
-
-**Interpretation:** R² = 0.73 means the model explains approximately 73% of the
-variance in salary using only 4 features. This is moderate performance. The
-remaining variance is likely explained by Job Title and other factors not captured
-in the dataset. R² is NOT a percentage accuracy.
-
-## 10. Key Findings
-
-1. **Experience is the strongest predictor** of salary (correlation = +0.82).
-2. **Higher education correlates with higher salary** - PhD holders earn significantly
-   more than Bachelor's holders on average.
-3. **There is a statistically significant salary gap** between Bachelor's and Master's
-   degree holders (p < 0.001).
-4. **The linear model captures 73% of salary variance** using only Age, Experience,
-   Gender, and Education Level. Including Job Title could improve this but requires
-   different modeling techniques (e.g., target encoding, tree-based models).
-
-## 11. Setup & Execution (Windows + VS Code)
-
-### Install dependencies
+### 1. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### Run the full pipeline (data inspection -> training -> evaluation)
+### 2. Run the Entire 5-Stage Pipeline End-to-End
 ```bash
 python main.py
 ```
 
-### Run interactive salary prediction
+### 3. Run Individual Pipeline Stages
+```bash
+python main.py stage 1    # Data Ingestion & Summary
+python main.py stage 2    # Preprocessing, Feature Engineering & Encoding
+python main.py stage 3    # Exploratory Data Analysis & Plots 01-09
+python main.py stage 4    # Statistical Inference, t-tests, ANOVA & Plot 10-11
+python main.py stage 5    # Model Training, Evaluation, Plots 12-13 & Inference
+```
+*(Each stage can also be executed directly, e.g. `python stages/stage1_load_summary.py`)*
+
+### 4. Interactive Terminal Salary Predictor
 ```bash
 python main.py predict
 ```
+*Allows interactive input of Age, Experience, Gender, Education, and Job Title to receive real-time salary estimates powered by the serialized Random Forest model.*
 
-### Run verification tests
+### 5. Run Automated Quality Assurance Test Suite
 ```bash
 python test_smoke.py
 ```
-
-## 12. Interactive Prediction
-
-After running the full pipeline (or if the model is already saved), use:
-
-```bash
-python main.py predict
-```
-
-You will be prompted to enter:
-- **Age** (18-70)
-- **Years of Experience** (0-50)
-- **Gender** (Male/Female)
-- **Education Level** (High School/Bachelor's/Master's/PhD)
-
-The model returns an **estimated salary** based on the trained regression model.
-Type `q` or `quit` at any prompt to exit.
-
-**Note:** The predicted amount is an approximate model estimate, not a guaranteed
-market salary.
-
-## 13. Syllabus Mapping (DEVL)
-
-| Syllabus Topic | Implementation |
-|----------------|---------------|
-| Data loading & inspection | `pd.read_csv()`, `.head()`, `.shape`, `.info()`, `.describe()`, `.isnull().sum()` |
-| Python fundamentals | Variables, functions, lists, dictionaries, conditions, loops |
-| NumPy operations | Array operations, `np.sqrt()`, `np.round()`, `np.isfinite()` |
-| Data cleaning | Missing value handling, duplicate removal, standardization |
-| Matplotlib visualization | Histograms, scatter plots, reference lines |
-| Seaborn visualization | Box plots, heatmaps, KDE plots, styled themes |
-| Descriptive statistics | Mean, median, std, min, max, correlation |
-| Hypothesis testing | Welch's t-test with interpretation |
-| Scikit-learn ML pipeline | `Pipeline`, `ColumnTransformer`, `train_test_split` |
-| Linear Regression | `LinearRegression`, `.fit()`, `.predict()` |
-| Model evaluation | MAE, MSE, RMSE, R² on held-out test set |
-| Data exploration workflow | End-to-end: CSV -> EDA -> Model -> Prediction |
-
-## 14. Limitations & Future Improvements
-
-### Limitations
-- **Job Title excluded** from features due to high cardinality (193 unique values).
-  This limits model accuracy.
-- **Dataset source unverified** -- original provenance cannot be confirmed.
-- **Salary currency unspecified** -- assumed USD based on value range.
-- **Linear model** may not capture non-linear salary patterns.
-- **Dataset has many duplicates** (4,912 of 6,704 rows), reducing effective sample size.
-
-### Possible Improvements
-- Use target encoding or feature hashing for Job Title.
-- Try tree-based models (Random Forest, Gradient Boosting) for better accuracy.
-- Add cross-validation for more robust evaluation.
-- Include additional features (location, company size, industry) if available.
-- Build a simple web interface for predictions.
+*Executes 45 comprehensive validation checks across data integrity, mappings, plots, model joblib binary, and inference edge cases.*
