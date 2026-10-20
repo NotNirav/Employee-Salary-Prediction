@@ -26,8 +26,7 @@ Annual employee compensation depends on a multifaceted combination of profession
 ```text
 Employee-Salary-Prediction/
 ├── requirements.txt            # Python dependencies (pandas, scikit-learn, etc.)
-├── README.md                   # Complete project documentation and lab guide
-├── everything.md               # Technical architecture & mathematical compendium
+├── README.md                   # Complete project documentation & lab report
 ├── main.py                     # Master CLI orchestrator (train / stage / predict)
 ├── test_smoke.py               # Automated 45-point test verification suite
 │
@@ -79,8 +78,8 @@ Employee-Salary-Prediction/
 ### Stage 2: Data Preprocessing & Feature Engineering (`stages/stage2_preprocess.py`)
 - **Target Sanitization**: Drops 5 rows with missing or non-positive salaries.
 - **String Harmonization**: Unifies `"Bachelor's Degree"` $\to$ `"Bachelor's"`, `"Master's Degree"` $\to$ `"Master's"`, `"phD"` $\to$ `"PhD"`.
-- **Deduplication**: Removes 4,912 duplicate rows.
-- **Subgroup Pruning**: Drops 7 rows where `Gender == 'Other'` due to insufficient sample size for statistical validity.
+- **Deduplication**: Removes 4,912 duplicate rows resulting from web survey scraping.
+- **Subgroup Pruning**: Drops 7 rows where `Gender == 'Other'` due to insufficient sample size for reliable group estimation.
 - **Missing Value Imputation**: Median for continuous features (`Age`, `Years of Experience`); mode for categoricals.
 - **Domain Feature Engineering**:
   - `Job Category`: Solves the 193-title sparsity problem by mapping titles into 9 functional categories using keyword matching (`Data/Analytics`, `Engineering/Software`, `HR`, `Marketing`, `Sales`, `Finance/Accounting`, `Design/Creative`, `Operations/Admin`, `Management/Executive`).
@@ -91,28 +90,30 @@ Employee-Salary-Prediction/
 
 ### Stage 3: Exploratory Data Analysis & Visualizations (`stages/stage3_eda.py`)
 Generates 9 analytical plots in `outputs/plots/`:
-1. `01_salary_distribution.png`: Target salary histogram with KDE.
+1. `01_salary_distribution.png`: Target salary histogram with KDE showing right-skewed distribution.
 2. `02_salary_boxplot.png`: Univariate salary dispersion and outlier assessment.
-3. `03_age_experience_distribution.png`: Dual histograms for workforce age and career tenure.
+3. `03_age_experience_distribution.png`: Dual histograms for workforce age (25–40) and career tenure (2–15 yrs).
 4. `04_experience_vs_salary.png`: Bivariate scatter showing strong linear correlation ($r = +0.82$).
 5. `05_age_vs_salary.png`: Age vs. compensation progression curve.
-6. `06_education_vs_salary.png`: Boxplot showing monotonic salary growth across degree levels.
+6. `06_education_vs_salary.png`: Ordered boxplot showing monotonic salary growth across degree levels.
 7. `07_job_category_vs_salary.png`: Comparative distributions across the 9 functional job categories.
 8. `08_seniority_vs_salary.png`: Boxplot validating salary tiering across seniority levels 0 to 4.
 9. `09_gender_vs_salary.png`: Gender salary distribution comparison.
 
 ### Stage 4: Statistical Inference & Feature Selection (`stages/stage4_stats.py`)
 - **Correlation Heatmap (`10_correlation_heatmap.png`)**: Computes Pearson correlation matrix; analyzes collinearity between Age and Experience ($r \approx 0.98$).
-- **Welch's $t$-test (Education)**: Bachelor's mean (\$91,211, $n=768$) vs. Master's mean (\$127,373, $n=567$) yields $t = -15.56, p < 0.0001 \implies$ statistically significant degree premium.
+- **Welch's $t$-test (Education)**:
+  $$\text{Bachelor's Mean: } \$91,211 \; (n=768) \quad \text{vs.} \quad \text{Master's Mean: } \$127,373 \; (n=567)$$
+  $$t = -15.56, \quad p < 0.0001 \implies \text{Reject } H_0 \text{ (Statistically significant degree wage premium)}$$
 - **One-Way ANOVA**:
-  - Across 4 Education levels: $F = 363.42, p < 0.0001$.
-  - Across 9 Job Categories: $F = 18.23, p < 0.0001$.
+  - Across 4 Education levels: $F = 363.42, p < 0.0001 \implies$ Significant differences across degrees.
+  - Across 9 Job Categories: $F = 18.23, p < 0.0001 \implies$ Significant differences across functional domains.
 - **Welch's $t$-test (Gender)**: Male vs. Female salary difference evaluation ($t = 4.38, p < 0.0001$).
 - **Feature Importance (`11_feature_importance.png`)**: Fits Random Forest to rank predictors; confirms `Years of Experience`, `Age`, and `Seniority` dominate salary variance.
 
 ### Stage 5: Regressors, Benchmarking & Inference (`stages/stage5_models.py`)
 - Splits data 80/20 train/test (`random_state=42`).
-- Scales numerical features with `StandardScaler` (fitted on training data only to avoid leakage).
+- Scales numerical features with `StandardScaler` (fitted on training data only to prevent data leakage).
 - Trains and evaluates three candidate regressors:
   1. **Multiple Linear Regression** (OLS)
   2. **Decision Tree Regressor** (`max_depth=8`)
@@ -123,7 +124,37 @@ Generates 9 analytical plots in `outputs/plots/`:
 
 ---
 
-## 4. Final Model Comparison & Benchmark
+## 4. Mathematical Formulations & Statistical Engine
+
+### 4.1 Multiple Linear Regression (OLS)
+Given feature vector $\mathbf{x} = [x_1, x_2, \dots, x_p]^T$:
+$$\hat{y} = \beta_0 + \sum_{j=1}^{p} \beta_j x_j + \epsilon, \quad \epsilon \sim \mathcal{N}(0, \sigma^2)$$
+Estimated via Ordinary Least Squares (OLS) minimizing the residual sum of squares:
+$$\hat{\boldsymbol{\beta}} = (\mathbf{X}^T \mathbf{X})^{-1} \mathbf{X}^T \mathbf{y}$$
+
+### 4.2 Decision Tree & Random Forest Regressors
+A regression tree recursively partitions the feature space into $M$ disjoint regions $R_1, \dots, R_M$. The prediction for region $R_m$ is the sample mean of observations within $R_m$:
+$$\hat{c}_m = \frac{1}{N_m} \sum_{i \in R_m} y_i$$
+Split candidates $(j, s)$ minimize Mean Squared Error (MSE):
+$$\min_{j, s} \left[ \sum_{i \in R_1(j, s)} (y_i - \hat{c}_1)^2 + \sum_{i \in R_2(j, s)} (y_i - \hat{c}_2)^2 \right]$$
+
+The **Random Forest** aggregates $B=100$ bootstrap trees with randomized feature subspace sampling:
+$$\hat{y}_{\text{RF}}(\mathbf{x}) = \frac{1}{B} \sum_{b=1}^{B} T_b(\mathbf{x})$$
+
+### 4.3 Inferential Hypothesis Testing
+
+#### Welch's Two-Sample $t$-test (Unequal Variances)
+Used to evaluate degree salary differentials without assuming equal group variances:
+$$t = \frac{\bar{X}_1 - \bar{X}_2}{\sqrt{\frac{s_1^2}{n_1} + \frac{s_2^2}{n_2}}}$$
+Degrees of freedom calculated via the Welch–Satterthwaite equation.
+
+#### One-Way Analysis of Variance (ANOVA)
+Tests whether mean compensation differs across $K$ categorical tiers:
+$$F = \frac{\text{MS}_{\text{between}}}{\text{MS}_{\text{within}}} = \frac{\frac{1}{K-1} \sum_{k=1}^K n_k (\bar{y}_k - \bar{y})^2}{\frac{1}{N-K} \sum_{k=1}^K \sum_{i=1}^{n_k} (y_{ki} - \bar{y}_k)^2}$$
+
+---
+
+## 5. Final Model Comparison & Benchmark
 
 | Regressor Architecture | Train $R^2$ | Test $R^2$ | MAE ($) | RMSE ($) | Overfitting Gap | Best Model? |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -141,7 +172,7 @@ Generates 9 analytical plots in `outputs/plots/`:
 
 ---
 
-## 5. Quickstart & Execution Guide
+## 6. Quickstart & Execution Guide
 
 ### 1. Install Dependencies
 ```bash
@@ -167,10 +198,12 @@ python main.py stage 5    # Model Training, Evaluation, Plots 12-13 & Inference
 ```bash
 python main.py predict
 ```
-*Allows interactive input of Age, Experience, Gender, Education, and Job Title to receive real-time salary estimates powered by the serialized Random Forest model.*
+*Allows interactive input of Age, Experience, Gender, Education, Job Title, and Seniority (with auto-detection fallback) to receive real-time salary estimates powered by the serialized Random Forest model.*
 
 ### 5. Run Automated Quality Assurance Test Suite
 ```bash
 python test_smoke.py
+# or
+python main.py test
 ```
-*Executes 45 comprehensive validation checks across data integrity, mappings, plots, model joblib binary, and inference edge cases.*
+*Executes 46 comprehensive validation checks across data integrity, mappings, plots, model joblib binary, and inference edge cases.*

@@ -147,6 +147,11 @@ try:
     # Test case 4: Entry level high school
     pred4 = predict_salary(age=20, experience=1, gender="Female", education="High School", job_title="Junior Receptionist")
     check("Inference test 4: Entry level valid estimation", isinstance(pred4, (int, float)) and pred4 > 0 and pred4 < pred1)
+
+    # Test case 5: Explicit seniority override
+    pred_jr = predict_salary(age=30, experience=6, gender="Male", education="Bachelor's", job_title="Software Engineer", seniority=0)
+    pred_sr = predict_salary(age=30, experience=6, gender="Male", education="Bachelor's", job_title="Software Engineer", seniority=2)
+    check("Inference test 5: Explicit seniority parameter works (Senior > Junior)", pred_sr > pred_jr)
 except Exception as e:
     check(f"Inference execution failed: {e}", False)
 

@@ -26,7 +26,6 @@ matplotlib.use("Agg")  # Non-blocking plot saving
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
@@ -224,8 +223,11 @@ def train_models():
     return model_bundle, results_df
 
 
-def predict_salary(age, experience, gender, education, job_title, model_bundle=None):
-    """Predict annual salary for an individual employee profile."""
+def predict_salary(age, experience, gender, education, job_title, seniority=None, model_bundle=None):
+    """
+    Predict annual salary for an individual employee profile.
+    If seniority is not specified, it is automatically derived from the job title.
+    """
     if model_bundle is None:
         if not MODEL_SAVE_PATH.exists():
             print("Trained model not found. Training model now...")
@@ -238,7 +240,11 @@ def predict_salary(age, experience, gender, education, job_title, model_bundle=N
     edu_dict = model_bundle["education_map"]
 
     job_cat = get_job_category(job_title)
-    seniority = get_seniority(job_title)
+    if seniority is None:
+        seniority = get_seniority(job_title)
+    else:
+        seniority = int(seniority)
+
     exp_per_age = (float(experience) / float(age)) if float(age) > 0 else 0.0
     edu_enc = edu_dict.get(education, 1)
     exp_x_edu = float(experience) * edu_enc
@@ -279,6 +285,14 @@ def interactive_prediction():
 
     print("\nEnter employee details (or press Ctrl+C / type 'exit' to quit):")
 
+    sen_labels = {
+        0: "Junior / Entry / Intern",
+        1: "Mid-level",
+        2: "Senior",
+        3: "Manager / Lead",
+        4: "Director / VP / Executive",
+    }
+
     while True:
         try:
             raw_age = input("\nAge (18-70): ").strip()
@@ -312,11 +326,23 @@ def interactive_prediction():
             if not job_title:
                 job_title = "Software Engineer"
 
-            pred = predict_salary(age, experience, gender, education, job_title, model_bundle)
+            auto_sen = get_seniority(job_title)
+            print("Seniority Level options:")
+            for lvl, label in sen_labels.items():
+                print(f"  [{lvl}] {label}")
+            sen_prompt = f"Select Seniority (0-4, press Enter to use detected [{auto_sen}: {sen_labels[auto_sen]}]): "
+            sen_choice = input(sen_prompt).strip()
+            if sen_choice in ("0", "1", "2", "3", "4"):
+                seniority = int(sen_choice)
+            else:
+                seniority = auto_sen
+
+            pred = predict_salary(age, experience, gender, education, job_title, seniority=seniority, model_bundle=model_bundle)
             print("\n" + "-" * 50)
             print(f"  Profile   : {int(age)} yrs old, {gender}, {education}")
             print(f"  Job Title : {job_title} ({experience} yrs exp)")
-            print(f"  Category  : {get_job_category(job_title)} | Seniority Level: {get_seniority(job_title)}")
+            print(f"  Category  : {get_job_category(job_title)}")
+            print(f"  Seniority : Level {seniority} ({sen_labels[seniority]})")
             print(f"  >>> Estimated Annual Salary: ${pred:,.2f}")
             print("-" * 50)
 
