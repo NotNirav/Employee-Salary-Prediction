@@ -119,8 +119,8 @@ Generates 9 analytical plots in `outputs/plots/`:
   2. **Decision Tree Regressor** (`max_depth=8`)
   3. **Random Forest Regressor** (`n_estimators=100`)
 - Produces parity plot (`12_actual_vs_predicted.png`) and performance comparison chart (`13_model_r2_comparison.png`).
-- Persists best model to `outputs/models/salary_rf_model.joblib`.
-- Exposes interactive CLI and single prediction API function `predict_salary()`.
+- Persists best model and all candidate models to `outputs/models/salary_rf_model.joblib`.
+- Exposes multi-model interactive CLI and API function `predict_salary()` with comparative predictions and scenario rationale.
 
 ---
 
@@ -206,4 +206,4 @@ python test_smoke.py
 # or
 python main.py test
 ```
-*Executes 46 comprehensive validation checks across data integrity, mappings, plots, model joblib binary, and inference edge cases.*
+*Executes 48 comprehensive validation checks across data integrity, mappings, plots, model joblib binary, multi-model outputs, and inference edge cases.*

@@ -8,7 +8,7 @@ Usage:
   python main.py all            -> Runs all 5 pipeline stages end-to-end
   python main.py stage <1-5>    -> Runs an individual stage (e.g. python main.py stage 1)
   python main.py predict        -> Launches interactive salary prediction terminal CLI
-  python main.py test           -> Executes automated 46-point smoke test suite
+  python main.py test           -> Executes automated 48-point smoke test suite
   python main.py help           -> Shows CLI usage instructions
 """
 
@@ -108,7 +108,7 @@ Usage:
                                   4 = Statistical Inference (t-test, ANOVA)
                                   5 = Model Training, Evaluation & Benchmarking
   python main.py predict        Launch interactive terminal salary predictor
-  python main.py test           Run automated 46-point smoke test suite
+  python main.py test           Run automated 48-point smoke test suite
   python main.py help           Show this help message
 """, flush=True)
 

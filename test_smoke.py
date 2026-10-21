@@ -152,6 +152,11 @@ try:
     pred_jr = predict_salary(age=30, experience=6, gender="Male", education="Bachelor's", job_title="Software Engineer", seniority=0)
     pred_sr = predict_salary(age=30, experience=6, gender="Male", education="Bachelor's", job_title="Software Engineer", seniority=2)
     check("Inference test 5: Explicit seniority parameter works (Senior > Junior)", pred_sr > pred_jr)
+
+    # Test case 6: Multi-model prediction and scenario explanation
+    multi_res = predict_salary(age=30, experience=6, gender="Male", education="Bachelor's", job_title="Software Engineer", return_all=True)
+    check("Inference test 6: Multi-model output returns all 3 candidate models", len(multi_res["predictions"]) == 3 and "Random Forest" in multi_res["predictions"])
+    check("Inference test 7: Multi-model output includes scenario explanation", isinstance(multi_res["reason"], list) and len(multi_res["reason"]) >= 3)
 except Exception as e:
     check(f"Inference execution failed: {e}", False)
 

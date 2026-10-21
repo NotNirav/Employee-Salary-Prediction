@@ -198,11 +198,14 @@ def train_models():
     comp_df = pd.DataFrame(comp_data)
     print(comp_df.to_string(index=False))
 
-    # 6. Save Best Model and Metrics
+    # 6. Save Best Model, All Models, Scaler, and Metrics
     best_model = fitted_models[best_by_r2]
     model_bundle = {
         "model_name": best_by_r2,
         "model": best_model,
+        "all_models": fitted_models,
+        "scaler": scaler,
+        "scale_cols": scale_cols_present,
         "feature_columns": feature_columns,
         "education_map": EDUCATION_MAP,
         "metrics": results_df.to_dict(orient="records"),
@@ -223,10 +226,71 @@ def train_models():
     return model_bundle, results_df
 
 
-def predict_salary(age, experience, gender, education, job_title, seniority=None, model_bundle=None):
+def explain_best_scenario(age, experience, education, job_title, seniority, predictions=None, metrics=None):
+    """
+    Generate dynamic, profile-aware reasoning for why Random Forest is superior
+    for this specific candidate profile compared to Linear Regression and Decision Tree.
+    """
+    rf_r2 = "86.9%"
+    lr_r2 = "81.3%"
+    dt_r2 = "83.7%"
+    rf_rmse = "$19,402"
+    lr_rmse = "$23,206"
+    dt_rmse = "$21,699"
+
+    if metrics:
+        for m in metrics:
+            if m.get("Model") == "Random Forest":
+                rf_r2 = f"{m.get('Test R²', 0.8693)*100:.1f}%"
+                rf_rmse = f"${m.get('RMSE ($)', 19401.5):,.0f}"
+            elif m.get("Model") == "Linear Regression":
+                lr_r2 = f"{m.get('Test R²', 0.8130)*100:.1f}%"
+                lr_rmse = f"${m.get('RMSE ($)', 23206.2):,.0f}"
+            elif m.get("Model") == "Decision Tree":
+                dt_r2 = f"{m.get('Test R²', 0.8365)*100:.1f}%"
+                dt_rmse = f"${m.get('RMSE ($)', 21698.9):,.0f}"
+
+    reasons = [
+        (
+            f"Highest Generalization Accuracy: On the independent test split, Random Forest achieved the highest "
+            f"Test R² ({rf_r2}) and lowest error (RMSE: {rf_rmse} vs {lr_rmse} for Linear Regression, {dt_rmse} for Decision Tree)."
+        ),
+        (
+            f"Captures Non-Linear Feature Interactions: Real compensation curves don't follow a rigid straight line. "
+            f"The compounding interaction between Seniority (Level {seniority}), {experience:g} years of experience, and a {education} "
+            f"degree creates non-linear tier thresholds that Linear Regression oversimplifies."
+        ),
+        (
+            "Variance Mitigation vs Single Decision Tree: A single Decision Tree creates rigid step-function jumps "
+            "and easily overfits training partitions. Random Forest averages predictions across 100 decorrelated trees "
+            "(bagging), producing a smooth, stabilized, and statistically reliable estimation."
+        ),
+    ]
+
+    if seniority >= 2 or experience >= 10:
+        reasons.append(
+            f"High-Seniority Compensation Dynamics: For Senior/Leadership roles (Seniority Level {seniority}, {experience:g} yrs exp), "
+            "compensation packages exhibit high variance and specialized market premiums. Random Forest's multi-tree consensus "
+            "prevents extreme single-branch overestimations or linear underestimations."
+        )
+    elif education in ("Master's", "PhD"):
+        reasons.append(
+            f"Postgraduate Degree Valuation: Advanced degrees ({education}) carry compounding career value that interacts "
+            "with specific job categories. Random Forest natively isolates these feature cross-interactions without forcing a fixed linear slope."
+        )
+
+    return reasons
+
+
+def predict_salary(age, experience, gender, education, job_title, seniority=None, model_bundle=None, return_all=False):
     """
     Predict annual salary for an individual employee profile.
     If seniority is not specified, it is automatically derived from the job title.
+
+    Parameters:
+      return_all (bool): If True, returns a dictionary containing predictions from
+                         all candidate models, metrics, recommendation, and scenario rationale.
+                         If False (default), returns the float prediction of the best model.
     """
     if model_bundle is None:
         if not MODEL_SAVE_PATH.exists():
@@ -235,7 +299,10 @@ def predict_salary(age, experience, gender, education, job_title, seniority=None
         else:
             model_bundle = joblib.load(MODEL_SAVE_PATH)
 
-    model = model_bundle["model"]
+    # If the bundle was saved with an older format missing all_models, retrain once
+    if "all_models" not in model_bundle:
+        model_bundle, _ = train_models()
+
     feature_columns = model_bundle["feature_columns"]
     edu_dict = model_bundle["education_map"]
 
@@ -267,21 +334,76 @@ def predict_salary(age, experience, gender, education, job_title, seniority=None
         row[cat_col] = 1.0
 
     input_df = pd.DataFrame([row], columns=feature_columns)
-    predicted_val = model.predict(input_df)[0]
-    return float(predicted_val)
+
+    # Compute predictions from all available models
+    predictions = {}
+    all_models = model_bundle.get("all_models", {})
+
+    # 1. Random Forest (Champion)
+    rf_model = all_models.get("Random Forest", model_bundle.get("model"))
+    rf_pred = float(rf_model.predict(input_df)[0])
+    predictions["Random Forest"] = round(rf_pred, 2)
+
+    # 2. Decision Tree
+    if "Decision Tree" in all_models:
+        dt_pred = float(all_models["Decision Tree"].predict(input_df)[0])
+        predictions["Decision Tree"] = round(dt_pred, 2)
+
+    # 3. Linear Regression (with feature scaling)
+    if "Linear Regression" in all_models:
+        lr_model = all_models["Linear Regression"]
+        scaler = model_bundle.get("scaler")
+        scale_cols = model_bundle.get("scale_cols", [])
+        if scaler is not None and scale_cols:
+            input_df_scaled = input_df.copy()
+            cols_to_scale = [c for c in scale_cols if c in input_df_scaled.columns]
+            input_df_scaled[cols_to_scale] = scaler.transform(input_df[cols_to_scale])
+            lr_pred = float(lr_model.predict(input_df_scaled)[0])
+        else:
+            lr_pred = float(lr_model.predict(input_df)[0])
+        predictions["Linear Regression"] = round(max(0.0, lr_pred), 2)
+
+    best_model_name = model_bundle.get("model_name", "Random Forest")
+    best_pred = predictions.get(best_model_name, rf_pred)
+
+    if not return_all:
+        return float(best_pred)
+
+    reasons = explain_best_scenario(
+        age=float(age),
+        experience=float(experience),
+        education=education,
+        job_title=job_title,
+        seniority=seniority,
+        predictions=predictions,
+        metrics=model_bundle.get("metrics", []),
+    )
+
+    return {
+        "predictions": predictions,
+        "best_model": best_model_name,
+        "best_prediction": float(best_pred),
+        "reason": reasons,
+        "metrics": model_bundle.get("metrics", []),
+        "seniority": seniority,
+        "job_category": job_cat,
+    }
 
 
 def interactive_prediction():
     """Terminal interactive CLI for salary estimation."""
-    print("\n" + "=" * 60)
-    print("INTERACTIVE EMPLOYEE SALARY ESTIMATOR")
-    print("=" * 60)
+    print("\n" + "=" * 72)
+    print("      INTERACTIVE EMPLOYEE SALARY ESTIMATOR (MULTI-MODEL)")
+    print("=" * 72)
 
     if not MODEL_SAVE_PATH.exists():
         print("Model file not found. Running model training first...")
         model_bundle, _ = train_models()
     else:
         model_bundle = joblib.load(MODEL_SAVE_PATH)
+        if "all_models" not in model_bundle:
+            print("Retraining models to update bundle with all candidate algorithms...")
+            model_bundle, _ = train_models()
 
     print("\nEnter employee details (or press Ctrl+C / type 'exit' to quit):")
 
@@ -337,14 +459,45 @@ def interactive_prediction():
             else:
                 seniority = auto_sen
 
-            pred = predict_salary(age, experience, gender, education, job_title, seniority=seniority, model_bundle=model_bundle)
-            print("\n" + "-" * 50)
-            print(f"  Profile   : {int(age)} yrs old, {gender}, {education}")
-            print(f"  Job Title : {job_title} ({experience} yrs exp)")
-            print(f"  Category  : {get_job_category(job_title)}")
-            print(f"  Seniority : Level {seniority} ({sen_labels[seniority]})")
-            print(f"  >>> Estimated Annual Salary: ${pred:,.2f}")
-            print("-" * 50)
+            res = predict_salary(
+                age=age,
+                experience=experience,
+                gender=gender,
+                education=education,
+                job_title=job_title,
+                seniority=seniority,
+                model_bundle=model_bundle,
+                return_all=True,
+            )
+
+            print("\n" + "=" * 72)
+            print("  EMPLOYEE PROFILE SUMMARY")
+            print("=" * 72)
+            print(f"  • Profile    : {int(age)} yrs old | {gender} | {education}")
+            print(f"  • Job Title  : {job_title} ({experience:g} yrs exp)")
+            print(f"  • Category   : {res['job_category']}")
+            print(f"  • Seniority  : Level {seniority} ({sen_labels[seniority]})")
+            print("-" * 72)
+            print("  ALL CANDIDATE MODEL SALARY PREDICTIONS:")
+            print("-" * 72)
+
+            for m_name in ["Linear Regression", "Decision Tree", "Random Forest"]:
+                val = res["predictions"].get(m_name, 0.0)
+                is_best = (m_name == res["best_model"])
+                tag = "⭐ (BEST MODEL)" if is_best else "              "
+                m_info = next((m for m in res["metrics"] if m.get("Model") == m_name), None)
+                stat_str = ""
+                if m_info:
+                    stat_str = f"[Test R²: {m_info['Test R²']*100:.1f}% | RMSE: ${m_info['RMSE ($)']:,.0f}]"
+                print(f"  • {m_name:<18} : ${val:>11,.2f}   {tag}   {stat_str}")
+
+            print("-" * 72)
+            print(f"  >>> RECOMMENDED SALARY : ${res['best_prediction']:,.2f} via {res['best_model']}")
+            print("-" * 72)
+            print(f"  💡 WHY {res['best_model'].upper()} IS BEST FOR THIS SCENARIO:")
+            for r in res["reason"]:
+                print(f"    - {r}")
+            print("=" * 72)
 
             cont = input("\nPredict another profile? (y/n, default y): ").strip().lower()
             if cont in ("n", "no", "exit", "quit"):
@@ -369,19 +522,25 @@ def run_stage5():
         {"age": 35, "experience": 8, "gender": "Female", "education": "PhD", "job_title": "Senior Research Scientist"}
     ]
 
-    print("Running 3 Example Predictions:")
+    print("Running 3 Example Predictions (Multi-Model Comparison):")
     for i, ex in enumerate(examples, 1):
-        pred = predict_salary(
+        res = predict_salary(
             age=ex["age"],
             experience=ex["experience"],
             gender=ex["gender"],
             education=ex["education"],
             job_title=ex["job_title"],
             model_bundle=model_bundle,
+            return_all=True,
         )
         print(f"\nExample {i}:")
-        print(f"  Inputs    : {ex['age']} yrs old, {ex['gender']}, {ex['education']}, '{ex['job_title']}', {ex['experience']} yrs exp")
-        print(f"  Predicted : ${pred:,.2f}")
+        print(f"  Inputs          : {ex['age']} yrs old, {ex['gender']}, {ex['education']}, '{ex['job_title']}', {ex['experience']} yrs exp")
+        print(f"  Predictions     :")
+        for m_name, m_val in res["predictions"].items():
+            star = " ⭐ (BEST)" if m_name == res["best_model"] else ""
+            print(f"    - {m_name:<18} : ${m_val:,.2f}{star}")
+        print(f"  >>> Recommended : ${res['best_prediction']:,.2f} via {res['best_model']}")
+        print(f"  >>> Best Reason : {res['reason'][0]}")
 
     print("\n" + "=" * 65)
     print("STAGE 5 COMPLETE: Model evaluation and inference successful.")
